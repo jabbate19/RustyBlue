@@ -79,7 +79,27 @@ impl<'a> Transport<'a> {
                 out
             },
         }
-        
+    }
+
+    pub fn get_color(&self) -> term::color::Color {
+        let tag = &self.get_tag()[..];
+        match tag {
+            "FTP" => term::color::WHITE,
+            "SSH" => term::color::WHITE,
+            "SMTP" => term::color::WHITE,
+            "DNS" => term::color::CYAN,
+            "DHCP" => term::color::WHITE,
+            "HTTP" => term::color::GREEN,
+            "POP3" => term::color::WHITE,
+            "IMAP" => term::color::WHITE,
+            "HTTPS" => term::color::GREEN,
+            "MDNS" => term::color::CYAN,
+            _ => match &self.protocol {
+                Layer4Protocol::TCP => term::color::BRIGHT_CYAN,
+                Layer4Protocol::UDP => term::color::CYAN,
+                _ => term::color::RED
+            },
+        }
     }
 
 }

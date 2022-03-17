@@ -64,6 +64,5 @@ impl<'a> ICMP<'a> {
             }
             _ => String::from("???"),
         }
-        
     }
 }

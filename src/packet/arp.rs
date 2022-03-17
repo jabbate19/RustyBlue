@@ -19,7 +19,7 @@ impl ARP {
                 "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
                 data[18], data[19], data[20], data[21], data[22], data[23]
             ),
-            opcode: ((data[7] as u16) << 8) | data[8] as u16,
+            opcode: ((data[6] as u16) << 8) | data[7] as u16,
         })
     }
 
