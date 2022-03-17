@@ -1,31 +1,10 @@
+mod packet;
+
+use packet::protocol::*;
 use pcap::{Capture, Device};
 use std::collections::HashMap;
 use std::fmt;
 
-enum Layer3Protocol {
-    IPv4,
-    IPv6,
-    ARP,
-    VLAN,
-}
-
-enum IPProtocol {
-    TCP,
-    UDP,
-    ICMP,
-    ICMPv6,
-}
-
-impl fmt::Display for IPProtocol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            IPProtocol::TCP => write!(f, "TCP"),
-            IPProtocol::UDP => write!(f, "UDP"),
-            IPProtocol::ICMP => write!(f, "ICMP"),
-            IPProtocol::ICMPv6 => write!(f, "ICMPv6"),
-        }
-    }
-}
 
 fn get_wifi() -> Option<Device> {
     for interface in Device::list().unwrap() {
@@ -37,19 +16,6 @@ fn get_wifi() -> Option<Device> {
 }
 
 fn main() {
-    let layer_3_protocols = HashMap::from([
-        ([8, 0], Layer3Protocol::IPv4),
-        ([8, 6], Layer3Protocol::ARP),
-        ([134, 221], Layer3Protocol::IPv6),
-        ([129, 0], Layer3Protocol::VLAN),
-    ]);
-
-    let ip_protocols = HashMap::from([
-        (6, IPProtocol::TCP),
-        (17, IPProtocol::UDP),
-        (1, IPProtocol::ICMP),
-        (58, IPProtocol::ICMPv6),
-    ]);
     println!("Running!");
     let dev = get_wifi().unwrap();
     let mut capture = Capture::from_device(dev).unwrap().open().unwrap();
@@ -64,111 +30,37 @@ fn main() {
         if i == 1 {
             start_time = time;
         }
-        //let diff_time: f64 = time - start_time;
         let diff_time: f64 = time;
         let data = packet.data;
-        let dst_mac = format!(
-            "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-            data[0], data[1], data[2], data[3], data[4], data[5]
+        let eth = packet::ethernet::Ethernet::new(&data).unwrap();
+        let dst_mac = &eth.dst;
+        let src_mac = &eth.src;
+        let int = match eth.ethertype {
+            packet::protocol::Layer3Protocol::Unknown => None,
+            x => packet::ip::IP::new(eth.payload, x),
+        }.unwrap();
+        let dst_ip = &int.dst;
+        let src_ip = &int.src;
+        
+        let protocol = &int.protocol;
+        let transport_data = match protocol {
+            Layer4Protocol::TCP | Layer4Protocol::UDP => {
+                let transport = packet::transport::Transport::new(int.payload, protocol).unwrap();
+                (transport.get_tag(), transport.to_string())
+            },
+            Layer4Protocol::ICMP | Layer4Protocol::ICMPv6 => {
+                let icmp = packet::icmp::ICMP::new(int.payload, protocol).unwrap();
+                (format!("{}", protocol), icmp.to_string())
+            },
+            Layer4Protocol::ARP => {
+                (String::from("ARP"), int.arp.unwrap().to_string())
+            },
+            Layer4Protocol::Unknown => (String::from("???"), String::from("???")),
+        };
+        println!(
+            "{} | {:.9} | {} | {} | {} | {} | {}",
+            i, diff_time, src_ip, dst_ip, transport_data.0, len, transport_data.1
         );
-        let src_mac = format!(
-            "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-            data[6], data[7], data[8], data[9], data[10], data[11]
-        );
-        match layer_3_protocols.get(&data[12..14]) {
-            Some(Layer3Protocol::IPv4) => {
-                let mut src_ip = format!("{}.{}.{}.{}", data[26], data[27], data[28], data[29]);
-                for _ in 0..(39 - src_ip.len()) {
-                    src_ip.push_str(" ");
-                }
-                let mut dst_ip = format!("{}.{}.{}.{}", data[30], data[31], data[32], data[33]);
-                for _ in 0..(39 - dst_ip.len()) {
-                    dst_ip.push_str(" ");
-                }
-                let protocol = match ip_protocols.get(&data[23]) {
-                    Some(x) => x.to_string(),
-                    None => String::from("???"),
-                };
-                println!(
-                    "{} | {:.9} | {} | {} | {} | {}",
-                    i, diff_time, src_ip, dst_ip, protocol, len
-                );
-            }
-            Some(Layer3Protocol::IPv6) => {
-                let mut src_ip = String::new();
-                for i in (22..38).step_by(2) {
-                    let a = format!("{:X?}", data[i]);
-                    let b = format!("{:X?}", data[i + 1]);
-                    if a.eq("0") {
-                        if b.eq("0") {
-                            src_ip.push_str("0:");
-                        } else {
-                            src_ip.push_str(&b);
-                            src_ip.push_str(":");
-                        }
-                    } else {
-                        src_ip.push_str(&a);
-                        src_ip.push_str(&b);
-                        src_ip.push_str(":");
-                    }
-                }
-                for _ in 0..(39 - src_ip.len()) {
-                    src_ip.push_str(" ");
-                }
-                let mut dst_ip = String::new();
-                for i in (38..54).step_by(2) {
-                    let a = format!("{:X?}", data[i]);
-                    let b = format!("{:X?}", data[i + 1]);
-                    if a.eq("0") {
-                        if b.eq("0") {
-                            dst_ip.push_str("0:");
-                        } else {
-                            dst_ip.push_str(&b);
-                            dst_ip.push_str(":");
-                        }
-                    } else {
-                        dst_ip.push_str(&a);
-                        dst_ip.push_str(&b);
-                        dst_ip.push_str(":");
-                    }
-                }
-                for _ in 0..(39 - dst_ip.len()) {
-                    src_ip.push_str(" ");
-                }
-                let protocol = match ip_protocols.get(&data[20]) {
-                    Some(x) => x.to_string(),
-                    None => String::from("???"),
-                };
-                println!(
-                    "{} | {:.9} | {} | {} | {} | {}",
-                    i,
-                    diff_time,
-                    src_ip,
-                    dst_ip,
-                    protocol,
-                    len
-                );
-            }
-            Some(Layer3Protocol::ARP) => {
-                println!(
-                    "{} | {:.9} | {} | {} | ARP | {}",
-                    i, diff_time, src_mac, dst_mac, len
-                );
-            }
-            Some(Layer3Protocol::VLAN) => {
-                println!("{} | {:.9} | VLAN Data | {}", i, diff_time, len);
-            }
-            None => {
-                println!(
-                    "{} | {:.9} | Unknown Layer 3 Protocol | {}",
-                    i, diff_time, len
-                );
-            }
-        }
-        if data[12] == 8 && data[13] == 0 {
-        } else {
-        }
-        //println!("{} | {} | {:?}", i, diff_time, &data[..50]);
         i += 1;
     }
 }

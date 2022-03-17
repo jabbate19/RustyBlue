@@ -23,6 +23,7 @@ pub enum Layer4Protocol {
     UDP,
     ICMP,
     ICMPv6,
+    ARP,
     Unknown
 }
 
@@ -33,6 +34,7 @@ impl fmt::Display for Layer4Protocol {
             Layer4Protocol::UDP => write!(f, "UDP"),
             Layer4Protocol::ICMP => write!(f, "ICMP"),
             Layer4Protocol::ICMPv6 => write!(f, "ICMPv6"),
+            Layer4Protocol::ARP => write!(f, "ARP"),
             Layer4Protocol::Unknown => write!(f, "???"),
         }
     }

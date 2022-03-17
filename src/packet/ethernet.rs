@@ -46,7 +46,7 @@ impl<'a> Ethernet<'a> {
                 dei: None,
                 vid: None,
                 ethertype: Ethernet::convert_protocol([data[12], data[13]]),
-                payload: &data[24..],
+                payload: &data[14..],
             });
         }
         None
