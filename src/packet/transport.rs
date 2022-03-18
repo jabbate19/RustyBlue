@@ -1,4 +1,5 @@
 use super::protocol::*;
+use std::fmt;
 
 pub struct Transport<'a> {
     src_port: u16,
@@ -10,16 +11,16 @@ pub struct Transport<'a> {
 impl<'a> Transport<'a> {
     pub fn new(data: &'a [u8], protocol: &'a Layer4Protocol) -> Option<Transport<'a>> {
         match protocol {
-            Layer4Protocol::TCP => Some(Transport{
+            Layer4Protocol::Tcp => Some(Transport {
                 src_port: ((data[0] as u16) << 8) | data[1] as u16,
                 dst_port: ((data[2] as u16) << 8) | data[3] as u16,
-                protocol: protocol,
+                protocol,
                 payload: &data[20..],
             }),
-            Layer4Protocol::UDP => Some(Transport{
+            Layer4Protocol::Udp => Some(Transport {
                 src_port: ((data[0] as u16) << 8) | data[1] as u16,
                 dst_port: ((data[2] as u16) << 8) | data[3] as u16,
-                protocol: protocol,
+                protocol,
                 payload: &data[8..],
             }),
             _ => None,
@@ -51,32 +52,7 @@ impl<'a> Transport<'a> {
                 143 => String::from("IMAP"),
                 443 => String::from("HTTPS"),
                 5353 => String::from("MDNS"),
-                _ => format!("{}", self.protocol)
-            }
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        let tag = &self.get_tag()[..];
-        let mut out = match tag {
-            "FTP" => String::from("FTP Data"),
-            "SSH" => String::from("SSH Data"),
-            "SMTP" => String::from("SMTP Data"),
-            "DNS" => String::from("DNS Data"),
-            "DHCP" => String::from("DHCP Data"),
-            "HTTP" => String::from("HTTP Data"),
-            "POP3" => String::from("POP3 Data"),
-            "IMAP" => String::from("IMAP Data"),
-            "HTTPS" => String::from("HTTPS Data"),
-            "MDNS" => String::from("MDNS Data"),
-            _ => String::new(),
-        };
-        let port_dir = format!("{} -> {}", self.src_port, self.dst_port);
-        match out.len() {
-            0 => port_dir,
-            _ => {
-                out.push_str(&format!(" ({})", port_dir));
-                out
+                _ => format!("{}", self.protocol),
             },
         }
     }
@@ -95,11 +71,34 @@ impl<'a> Transport<'a> {
             "HTTPS" => term::color::GREEN,
             "MDNS" => term::color::CYAN,
             _ => match &self.protocol {
-                Layer4Protocol::TCP => term::color::BRIGHT_CYAN,
-                Layer4Protocol::UDP => term::color::CYAN,
-                _ => term::color::RED
+                Layer4Protocol::Tcp => term::color::BRIGHT_CYAN,
+                Layer4Protocol::Udp => term::color::CYAN,
+                _ => term::color::RED,
             },
         }
     }
+}
 
+impl std::fmt::Display for Transport<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tag = &self.get_tag()[..];
+        let out = match tag {
+            "FTP" => String::from("FTP Data"),
+            "SSH" => String::from("SSH Data"),
+            "SMTP" => String::from("SMTP Data"),
+            "DNS" => String::from("DNS Data"),
+            "DHCP" => String::from("DHCP Data"),
+            "HTTP" => String::from("HTTP Data"),
+            "POP3" => String::from("POP3 Data"),
+            "IMAP" => String::from("IMAP Data"),
+            "HTTPS" => String::from("HTTPS Data"),
+            "MDNS" => String::from("MDNS Data"),
+            _ => String::new(),
+        };
+        let port_dir = format!("{} -> {}", self.src_port, self.dst_port);
+        match out.len() {
+            0 => write!(f, "{}", port_dir),
+            _ => write!(f, "{} ({})", out, port_dir),
+        }
+    }
 }

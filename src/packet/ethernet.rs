@@ -15,7 +15,7 @@ impl<'a> Ethernet<'a> {
     pub fn new(data: &[u8]) -> Option<Ethernet> {
         if data.len() >= 18 {
             if data[12] == 129 && data[13] == 0 {
-                return Some(Ethernet{
+                return Some(Ethernet {
                     src: format!(
                         "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
                         data[6], data[7], data[8], data[9], data[10], data[11]
@@ -32,7 +32,7 @@ impl<'a> Ethernet<'a> {
                     payload: &data[16..],
                 });
             }
-            return Some(Ethernet{
+            return Some(Ethernet {
                 src: format!(
                     "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
                     data[6], data[7], data[8], data[9], data[10], data[11]
@@ -56,9 +56,8 @@ impl<'a> Ethernet<'a> {
         match protocol {
             [8, 0] => Layer3Protocol::IPv4,
             [134, 221] => Layer3Protocol::IPv6,
-            [8, 6] => Layer3Protocol::ARP,
+            [8, 6] => Layer3Protocol::Arp,
             _ => Layer3Protocol::Unknown,
         }
     }
 }
-

@@ -1,4 +1,6 @@
-pub struct ARP {
+use std::fmt;
+
+pub struct Arp {
     src_ip: String,
     dst_ip: String,
     src_mac: String,
@@ -6,9 +8,9 @@ pub struct ARP {
     opcode: u16,
 }
 
-impl ARP {
-    pub fn new(src_ip: String, dst_ip: String, data: &[u8]) -> Option<ARP> {
-        Some(ARP{
+impl Arp {
+    pub fn new(src_ip: String, dst_ip: String, data: &[u8]) -> Option<Arp> {
+        Some(Arp {
             src_ip,
             dst_ip,
             src_mac: format!(
@@ -22,12 +24,14 @@ impl ARP {
             opcode: ((data[6] as u16) << 8) | data[7] as u16,
         })
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Arp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.opcode {
-            1 => format!("Who has {}? Tell {}", self.dst_ip, self.src_ip),
-            2 => format!("{} is at {}", self.src_ip, self.src_mac),
-            _ => String::from("ARP")
+            1 => write!(f, "Who has {}? Tell {}", self.dst_ip, self.src_ip),
+            2 => write!(f, "{} is at {}", self.src_ip, self.src_mac),
+            _ => write!(f, "ARP"),
         }
     }
 }
