@@ -1,15 +1,16 @@
 use std::fmt;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub struct Arp {
-    src_ip: String,
-    dst_ip: String,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_mac: String,
     dst_mac: String,
     opcode: u16,
 }
 
 impl Arp {
-    pub fn new(src_ip: String, dst_ip: String, data: &[u8]) -> Option<Arp> {
+    pub fn new(src_ip: IpAddr, dst_ip: IpAddr, data: &[u8]) -> Option<Arp> {
         Some(Arp {
             src_ip,
             dst_ip,

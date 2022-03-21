@@ -4,20 +4,20 @@ use std::fmt;
 pub struct Transport<'a> {
     src_port: u16,
     dst_port: u16,
-    protocol: &'a Layer4Protocol,
+    protocol: &'a Layer4,
     payload: &'a [u8],
 }
 
 impl<'a> Transport<'a> {
-    pub fn new(data: &'a [u8], protocol: &'a Layer4Protocol) -> Option<Transport<'a>> {
+    pub fn new(data: &'a [u8], protocol: &'a Layer4) -> Option<Transport<'a>> {
         match protocol {
-            Layer4Protocol::Tcp => Some(Transport {
+            Layer4::Tcp => Some(Transport {
                 src_port: ((data[0] as u16) << 8) | data[1] as u16,
                 dst_port: ((data[2] as u16) << 8) | data[3] as u16,
                 protocol,
                 payload: &data[20..],
             }),
-            Layer4Protocol::Udp => Some(Transport {
+            Layer4::Udp => Some(Transport {
                 src_port: ((data[0] as u16) << 8) | data[1] as u16,
                 dst_port: ((data[2] as u16) << 8) | data[3] as u16,
                 protocol,
@@ -71,8 +71,8 @@ impl<'a> Transport<'a> {
             "HTTPS" => term::color::GREEN,
             "MDNS" => term::color::CYAN,
             _ => match &self.protocol {
-                Layer4Protocol::Tcp => term::color::BRIGHT_CYAN,
-                Layer4Protocol::Udp => term::color::CYAN,
+                Layer4::Tcp => term::color::BRIGHT_CYAN,
+                Layer4::Udp => term::color::CYAN,
                 _ => term::color::RED,
             },
         }

@@ -1,23 +1,26 @@
 mod packet;
 
+use clap::Parser;
 use packet::protocol::*;
 use pcap::{Capture, Device};
 
-fn get_wifi() -> Option<Device> {
-    for interface in Device::list().unwrap() {
-        if interface.name == "en0" {
-            return Some(interface);
-        }
-    }
-    None
+#[derive(Debug, Parser)]
+#[clap(author, version, about)]
+struct Args {
+    interface: String,
 }
 
 fn main() {
+    let args = Args::parse();
     let mut term = term::stdout().unwrap();
     term.fg(term::color::BRIGHT_CYAN).unwrap();
     writeln!(term, "______          _        ______ _            \n| ___ \\        | |       | ___ \\ |           \n| |_/ /   _ ___| |_ _   _| |_/ / |_   _  ___ \n|    / | | / __| __| | | | ___ \\ | | | |/ _ \\\n| |\\ \\ |_| \\__ \\ |_| |_| | |_/ / | |_| |  __/\n\\_| \\_\\__,_|___/\\__|\\__, \\____/|_|\\__,_|\\___|\n                     __/ |                   \n                    |___/                    ").unwrap();
     term.reset().unwrap();
-    let dev = get_wifi().unwrap();
+    let dev = Device::list()
+        .unwrap()
+        .into_iter()
+        .find(|d| d.name == args.interface)
+        .expect("Couldn't find specified interface");
     let mut capture = Capture::from_device(dev)
         .unwrap()
         .timeout(2500)
@@ -43,41 +46,38 @@ fn main() {
             start_time = time;
         }
         let diff_time: f64 = time - start_time;
-        let data = packet.data;
-        let eth = packet::ethernet::Ethernet::new(data).unwrap();
+        let data = packet.data.to_vec();
+        // let eth = packet::ethernet::Ethernet::new(data).unwrap();
+        let eth = packet::ethernet::Ethernet::try_from(data).unwrap();
         let dst_mac = &eth.dst;
         let src_mac = &eth.src;
-        let int = match eth.ethertype {
-            packet::protocol::Layer3Protocol::Unknown => None,
-            x => packet::ip::IP::new(eth.payload, x),
-        }
-        .unwrap();
+        let int = packet::ip::IP::new(&eth.payload, eth.ethertype).unwrap();
         let dst_ip = &int.dst;
         let src_ip = &int.src;
 
         let protocol = &int.protocol;
         let transport_data = match protocol {
-            Layer4Protocol::Tcp | Layer4Protocol::Udp => {
+            Layer4::Tcp | Layer4::Udp => {
                 let transport = packet::transport::Transport::new(int.payload, protocol).unwrap();
                 term.fg(transport.get_color()).unwrap();
                 (transport.get_tag(), transport.to_string())
             }
-            Layer4Protocol::Icmp | Layer4Protocol::ICMPv6 => {
+            Layer4::Icmp | Layer4::ICMPv6 => {
                 term.fg(term::color::BRIGHT_MAGENTA).unwrap();
                 let icmp = packet::icmp::Icmp::new(int.payload, protocol).unwrap();
                 (format!("{}", protocol), format!("{}", icmp))
             }
-            Layer4Protocol::Arp => {
+            Layer4::Arp => {
                 term.fg(term::color::YELLOW).unwrap();
                 (String::from("ARP"), int.arp.unwrap().to_string())
             }
-            Layer4Protocol::Unknown => {
+            Layer4::Unknown(_) => {
                 term.fg(term::color::RED).unwrap();
                 (String::from("???"), String::from("???"))
             }
         };
         match protocol {
-            Layer4Protocol::Arp => writeln!(
+            Layer4::Arp => writeln!(
                 term,
                 "{} | {:.9} | {} | {} | {} | {} | {}",
                 i, diff_time, src_mac, dst_mac, transport_data.0, len, transport_data.1

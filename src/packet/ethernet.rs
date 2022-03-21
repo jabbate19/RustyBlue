@@ -1,63 +1,98 @@
 use super::protocol::*;
+use byteorder::{ByteOrder, LittleEndian};
+use std::{fmt::Display, io, vec::Vec};
 
-pub struct Ethernet<'a> {
-    pub src: String,
-    pub dst: String,
-    pub dot1q: bool,
-    pub pcp: Option<u8>,
-    pub dei: Option<bool>,
-    pub vid: Option<u16>,
-    pub ethertype: Layer3Protocol,
-    pub payload: &'a [u8],
+pub struct MacAddr([u8; 6]);
+
+impl Display for MacAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Outsourcing the MAC display logic to here
+        write!(
+            f,
+            "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
+            self.0[0], self.0[1], self.0[2], self.0[3], self.0[4], self.0[5],
+        )
+    }
 }
 
-impl<'a> Ethernet<'a> {
-    pub fn new(data: &[u8]) -> Option<Ethernet> {
-        if data.len() >= 18 {
-            if data[12] == 129 && data[13] == 0 {
-                return Some(Ethernet {
-                    src: format!(
-                        "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-                        data[6], data[7], data[8], data[9], data[10], data[11]
-                    ),
-                    dst: format!(
-                        "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-                        data[0], data[1], data[2], data[3], data[4], data[5]
-                    ),
-                    dot1q: true,
-                    pcp: Some(0),
-                    dei: Some(false),
-                    vid: Some(0),
-                    ethertype: Ethernet::convert_protocol([data[14], data[15]]),
-                    payload: &data[16..],
-                });
-            }
-            return Some(Ethernet {
-                src: format!(
-                    "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-                    data[6], data[7], data[8], data[9], data[10], data[11]
-                ),
-                dst: format!(
-                    "{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}:{:02X?}",
-                    data[0], data[1], data[2], data[3], data[4], data[5]
-                ),
-                dot1q: false,
-                pcp: None,
-                dei: None,
-                vid: None,
-                ethertype: Ethernet::convert_protocol([data[12], data[13]]),
-                payload: &data[14..],
+// Outsource the MAC Address creation logic to here
+// Also give it the ability to clone the array bytes from the
+// source to clean up some lifetime stuffs
+impl From<&[u8]> for MacAddr {
+    fn from(data: &[u8]) -> Self {
+        let mut mac_bytes = [0u8; 6];
+        mac_bytes.clone_from_slice(&data[0..6]);
+        Self(mac_bytes)
+    }
+}
+
+pub struct Dot1Q {
+    pcp: u8,
+    dei: bool,
+    vid: u16,
+}
+
+impl From<&[u8]> for Dot1Q {
+    fn from(data: &[u8]) -> Self {
+        let mut field_bits: u16 = ((data[2] as u16) << 8) | data[3] as u16;
+        let vid = field_bits & 0b111111111111;
+        field_bits = field_bits >> 12;
+        let dei = (field_bits & 0b1) == 1;
+        field_bits = field_bits >> 1;
+        let pcp = field_bits & 0b111;
+        Self {
+            pcp: pcp.try_into().unwrap(),
+            dei,
+            vid,
+        }
+    }
+}
+
+pub(crate) const ETHER_FRAME_MIN_SIZE: usize = 18;
+
+pub struct Ethernet {
+    pub dst: MacAddr,
+    pub src: MacAddr,
+    pub dot1q: Option<Dot1Q>,
+    pub ethertype: Layer3,
+    pub payload: Vec<u8>,
+}
+
+impl TryFrom<Vec<u8>> for Ethernet {
+    type Error = io::Error;
+
+    /// Try to read an Ethernet packet from bytes
+    ///
+    /// ## Errors
+    /// * [`std::io::ErrorKind::UnexpectedEof`] - If input data array too short
+    fn try_from(packet_bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        if packet_bytes.len() < ETHER_FRAME_MIN_SIZE {
+            return Err(Self::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Not enough bytes to construct Ethernet packet",
+            ));
+        }
+        if packet_bytes[12] == 129 && packet_bytes[13] == 0 {
+            return Ok(Ethernet {
+                dst: MacAddr::from(&packet_bytes[0..6]),
+                src: MacAddr::from(&packet_bytes[6..12]),
+                dot1q: Some(Dot1Q::from(&packet_bytes[12..15])),
+                ethertype: Layer3::from(LittleEndian::read_u16(&[
+                    packet_bytes[15],
+                    packet_bytes[14],
+                ])),
+                payload: packet_bytes[16..].to_vec(),
             });
         }
-        None
-    }
-
-    fn convert_protocol(protocol: [u8; 2]) -> Layer3Protocol {
-        match protocol {
-            [8, 0] => Layer3Protocol::IPv4,
-            [134, 221] => Layer3Protocol::IPv6,
-            [8, 6] => Layer3Protocol::Arp,
-            _ => Layer3Protocol::Unknown,
-        }
+        Ok(Ethernet {
+            dst: MacAddr::from(&packet_bytes[0..6]),
+            src: MacAddr::from(&packet_bytes[6..12]),
+            dot1q: None,
+            ethertype: Layer3::from(LittleEndian::read_u16(&[
+                packet_bytes[13],
+                packet_bytes[12],
+            ])),
+            payload: packet_bytes[14..].to_vec(),
+        })
     }
 }

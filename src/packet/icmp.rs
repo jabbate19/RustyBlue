@@ -4,13 +4,13 @@ use std::fmt;
 pub struct Icmp<'a> {
     icmp_type: u8,
     icmp_code: u8,
-    protocol: &'a Layer4Protocol,
+    protocol: &'a Layer4,
 }
 
 impl<'a> Icmp<'a> {
-    pub fn new(data: &[u8], protocol: &'a Layer4Protocol) -> Option<Icmp<'a>> {
+    pub fn new(data: &[u8], protocol: &'a Layer4) -> Option<Icmp<'a>> {
         match protocol {
-            Layer4Protocol::Icmp | Layer4Protocol::ICMPv6 => Some(Icmp {
+            Layer4::Icmp | Layer4::ICMPv6 => Some(Icmp {
                 icmp_type: data[0],
                 icmp_code: data[1],
                 protocol,
@@ -23,7 +23,7 @@ impl<'a> Icmp<'a> {
 impl std::fmt::Display for Icmp<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.protocol {
-            Layer4Protocol::Icmp => match self.icmp_type {
+            Layer4::Icmp => match self.icmp_type {
                 0 => write!(f, "Echo Reply"),
                 8 => write!(f, "Echo Request"),
                 3 => write!(
@@ -48,7 +48,7 @@ impl std::fmt::Display for Icmp<'_> {
                 ),
                 _ => write!(f, "Unknown ICMP Type"),
             },
-            Layer4Protocol::ICMPv6 => match self.icmp_type {
+            Layer4::ICMPv6 => match self.icmp_type {
                 1 => write!(
                     f,
                     "Destination Unreachable ({})",
