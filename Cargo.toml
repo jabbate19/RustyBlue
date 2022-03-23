@@ -10,3 +10,7 @@ pcap = "*"
 term = "0.7.0"
 clap = { version = "3.1", features = ["derive"] }
 byteorder = "1.4.3"
+hex = "0.4.3"
+serde_yaml = "0.8.7"
+dns-lookup = "1.0.8"
+

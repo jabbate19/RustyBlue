@@ -2,10 +2,10 @@ use super::protocol::*;
 use std::fmt;
 
 pub struct Transport<'a> {
-    src_port: u16,
-    dst_port: u16,
-    protocol: &'a Layer4,
-    payload: &'a [u8],
+    pub src_port: u16,
+    pub dst_port: u16,
+    pub protocol: &'a Layer4,
+    pub payload: &'a [u8],
 }
 
 impl<'a> Transport<'a> {

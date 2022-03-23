@@ -63,3 +63,20 @@ impl<'a> IP<'a> {
         }
     }
 }
+
+pub fn ip_network_id(ip: &str, cidr: u16) -> Option<u32> {
+    let pieces = ip.split('.');
+    let mut data: u32 = 0;
+    let mut pos: u8 = 1;
+    for piece in pieces {
+        let num: u32 = piece.parse().unwrap();
+        data += num;
+        if pos != 4 {
+            data = data << 8;
+        }
+        pos += 1;
+    }
+    let cidr = 24;
+    let end = &data >> (32 - cidr);
+    Some(end)
+}

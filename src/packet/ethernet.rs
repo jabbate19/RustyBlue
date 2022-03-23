@@ -26,6 +26,21 @@ impl From<&[u8]> for MacAddr {
     }
 }
 
+impl From<String> for MacAddr {
+    fn from(data: String) -> Self {
+        let mut hexes = [0u8; 6];
+        hex::decode_to_slice(data.replace(":", ""), &mut hexes).expect("Decoding failed");
+        MacAddr(hexes)
+    }
+}
+
+impl PartialEq for MacAddr {
+    fn eq(&self, other: &Self) -> bool {
+        println!("{:?} | {:?}", self.0, other.0);
+        self.0 == other.0
+    }
+}
+
 pub struct Dot1Q {
     pcp: u8,
     dei: bool,
