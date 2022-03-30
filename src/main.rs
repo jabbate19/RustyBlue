@@ -50,7 +50,7 @@ fn main() {
                 ),
         )
         .subcommand(
-            Command::new("abnormality")
+            Command::new("anomaly")
                 .about("search for data that seems a-typical to the given setup")
                 .arg(
                     Arg::new("config")
@@ -88,8 +88,8 @@ fn main() {
 fn process_command(matches: ArgMatches) {
     if let Some(matches) = matches.subcommand_matches("sniff") {
         return commands::sniff::sniff(matches);
-    } else if let Some(matches) = matches.subcommand_matches("abnormality") {
-        return commands::abnormality::abnormality(matches);
+    } else if let Some(matches) = matches.subcommand_matches("anomaly") {
+        return commands::anomaly::anomaly(matches);
     } else {
         println!("Please Provide a Command!");
     }

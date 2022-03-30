@@ -1,2 +1,2 @@
-pub mod abnormality;
+pub mod anomaly;
 pub mod sniff;

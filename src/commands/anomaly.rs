@@ -7,7 +7,7 @@ use std::vec::Vec;
 
 use clap::ArgMatches;
 
-pub fn abnormality(matches: &ArgMatches) {
+pub fn anomaly(matches: &ArgMatches) {
     // Get Data file with config
     let filename = matches.value_of("config").unwrap();
     let f = std::fs::File::open(filename).unwrap();
