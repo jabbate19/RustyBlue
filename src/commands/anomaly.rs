@@ -1,8 +1,8 @@
 use crate::packet;
 use crate::packet::protocol::*;
-use clap::Parser;
+use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr};
 use std::vec::Vec;
 
 use clap::ArgMatches;
@@ -53,11 +53,14 @@ pub fn anomaly(matches: &ArgMatches) {
     let format: bool = !matches.is_present("no-format");
 
     let mut term = term::stdout().unwrap();
-    term.fg(term::color::BRIGHT_CYAN).unwrap();
+    if format {
+        term.fg(term::color::BRIGHT_CYAN).unwrap();
+    }
     writeln!(term, "______          _        ______ _            \n| ___ \\        | |       | ___ \\ |           \n| |_/ /   _ ___| |_ _   _| |_/ / |_   _  ___ \n|    / | | / __| __| | | | ___ \\ | | | |/ _ \\\n| |\\ \\ |_| \\__ \\ |_| |_| | |_/ / | |_| |  __/\n\\_| \\_\\__,_|___/\\__|\\__, \\____/|_|\\__,_|\\___|\n                     __/ |                   \n                    |___/                    ").unwrap();
-    term.reset().unwrap();
-    term.fg(term::color::RED).unwrap();
-
+    if format {
+        term.reset().unwrap();
+        term.fg(term::color::RED).unwrap();
+    }
     let dev = match matches.value_of("interface") {
         Some(interface) => Device::list()
             .unwrap()
@@ -142,10 +145,10 @@ pub fn anomaly(matches: &ArgMatches) {
                 }
                 (String::from("ARP"), int.arp.unwrap().to_string())
             }
-            Layer4::Unknown(_) => {
+            Layer4::Unknown(x) => {
                 red_flag = true;
                 reason.push_str("UNKNOWN_LAYER4;");
-                (String::from("???"), String::from("???"))
+                (String::from("???"), format!("??? (Header ID: {})", x))
             }
         };
         for (net_id, cidr) in &safe_ids {
@@ -162,11 +165,39 @@ pub fn anomaly(matches: &ArgMatches) {
                     "{} | {:.9} | {} | {} | {} | {} | {} | {}",
                     i, diff_time, src_mac, dst_mac, transport_data.0, len, transport_data.1, reason
                 ),
-                _ => writeln!(
-                    term,
-                    "{} | {:.9} | {} | {} | {} | {} | {} | {}",
-                    i, diff_time, src_ip, dst_ip, transport_data.0, len, transport_data.1, reason
-                ),
+                _ => {
+                    if matches.is_present("rdns") {
+                        let src_lookup = match lookup_addr(src_ip) {
+                            Ok(x) => {
+                                format!(" ({})", x)
+                            }
+                            Err(_) => String::new(),
+                        };
+                        let dst_lookup = match lookup_addr(dst_ip) {
+                            Ok(x) => format!(" ({})", x),
+                            Err(_) => String::new(),
+                        };
+                        writeln!(
+                            term,
+                            "{} | {:.9} | {}{} | {}{} | {} | {} | {}",
+                            i,
+                            diff_time,
+                            src_ip,
+                            src_lookup,
+                            dst_ip,
+                            dst_lookup,
+                            transport_data.0,
+                            len,
+                            transport_data.1
+                        )
+                    } else {
+                        writeln!(
+                            term,
+                            "{} | {:.9} | {} | {} | {} | {} | {}",
+                            i, diff_time, src_ip, dst_ip, transport_data.0, len, transport_data.1
+                        )
+                    }
+                }
             }
             .unwrap();
         }

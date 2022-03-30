@@ -1,10 +1,7 @@
 mod commands;
 mod packet;
 
-use clap::{Arg, ArgMatches, Command, Parser};
-
-use packet::protocol::*;
-use pcap::{Capture, Device};
+use clap::{Arg, ArgMatches, Command};
 
 fn main() {
     let matches = Command::new("RustyBlue")
@@ -87,9 +84,9 @@ fn main() {
 
 fn process_command(matches: ArgMatches) {
     if let Some(matches) = matches.subcommand_matches("sniff") {
-        return commands::sniff::sniff(matches);
+        commands::sniff::sniff(matches)
     } else if let Some(matches) = matches.subcommand_matches("anomaly") {
-        return commands::anomaly::anomaly(matches);
+        commands::anomaly::anomaly(matches)
     } else {
         println!("Please Provide a Command!");
     }

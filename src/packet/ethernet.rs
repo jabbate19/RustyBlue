@@ -29,7 +29,7 @@ impl From<&[u8]> for MacAddr {
 impl From<String> for MacAddr {
     fn from(data: String) -> Self {
         let mut hexes = [0u8; 6];
-        hex::decode_to_slice(data.replace(":", ""), &mut hexes).expect("Decoding failed");
+        hex::decode_to_slice(data.replace(':', ""), &mut hexes).expect("Decoding failed");
         MacAddr(hexes)
     }
 }
@@ -51,9 +51,9 @@ impl From<&[u8]> for Dot1Q {
     fn from(data: &[u8]) -> Self {
         let mut field_bits: u16 = ((data[2] as u16) << 8) | data[3] as u16;
         let vid = field_bits & 0b111111111111;
-        field_bits = field_bits >> 12;
+        field_bits >>= 12;
         let dei = (field_bits & 0b1) == 1;
-        field_bits = field_bits >> 1;
+        field_bits >>= 1;
         let pcp = field_bits & 0b111;
         Self {
             pcp: pcp.try_into().unwrap(),

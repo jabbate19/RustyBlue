@@ -74,10 +74,10 @@ pub fn ip_network_id(ip: IpAddr, cidr: &u16) -> Option<u32> {
         let num: u32 = piece.parse().unwrap();
         data += num;
         if pos != 4 {
-            data = data << 8;
+            data <<= 8;
         }
         pos += 1;
     }
-    let end = &data >> (32 - cidr);
+    let end = data >> (32 - cidr);
     Some(end)
 }

@@ -1,9 +1,8 @@
 use crate::packet;
 use crate::packet::protocol::*;
-use clap::Parser;
 use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr};
 
 use clap::ArgMatches;
 
