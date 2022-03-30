@@ -16,8 +16,8 @@ impl<'a> IP<'a> {
     pub fn new(data: &[u8], protocol: Layer3) -> Option<IP> {
         match protocol {
             Layer3::Arp => {
-                let src = IpAddr::V4(Ipv4Addr::new(data[12], data[13], data[14], data[15]));
-                let dst = IpAddr::V4(Ipv4Addr::new(data[16], data[17], data[18], data[19]));
+                let src = IpAddr::V4(Ipv4Addr::new(data[14], data[15], data[16], data[17]));
+                let dst = IpAddr::V4(Ipv4Addr::new(data[24], data[25], data[26], data[27]));
                 Some(IP {
                     src,
                     dst,
