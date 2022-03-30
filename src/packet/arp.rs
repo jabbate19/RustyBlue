@@ -6,7 +6,7 @@ pub struct Arp {
     dst_ip: IpAddr,
     src_mac: String,
     dst_mac: String,
-    opcode: u16,
+    pub opcode: u16,
 }
 
 impl Arp {
