@@ -2,7 +2,7 @@ use crate::packet;
 use crate::packet::protocol::*;
 use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
-use std::net::{IpAddr};
+use std::net::IpAddr;
 
 use clap::ArgMatches;
 
@@ -99,6 +99,8 @@ pub fn sniff(matches: &ArgMatches) {
                 }
                 (String::from("ARP"), int.arp.unwrap().to_string())
             }
+            Layer4::Igmp => (String::from("IGMP"), String::from("IGMP")),
+            Layer4::IPv6HopByHop => (String::from("IPv6HbH"), String::from("IPv6HbH")),
             Layer4::Unknown(_) => {
                 if format {
                     term.fg(term::color::RED).unwrap();

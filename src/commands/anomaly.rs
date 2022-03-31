@@ -2,7 +2,7 @@ use crate::packet;
 use crate::packet::protocol::*;
 use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
-use std::net::{IpAddr};
+use std::net::IpAddr;
 use std::vec::Vec;
 
 use clap::ArgMatches;
@@ -105,7 +105,10 @@ pub fn anomaly(matches: &ArgMatches) {
         let eth = packet::ethernet::Ethernet::try_from(data).unwrap();
         let dst_mac = &eth.dst;
         let src_mac = &eth.src;
-        let int = packet::ip::IP::new(&eth.payload, eth.ethertype).unwrap();
+        let int = match packet::ip::IP::new(&eth.payload, eth.ethertype) {
+            Some(x) => x,
+            None => continue,
+        };
         let dst_ip = &int.dst;
         let src_ip = &int.src;
         if dst_ip.is_ipv4() {
@@ -145,6 +148,8 @@ pub fn anomaly(matches: &ArgMatches) {
                 }
                 (String::from("ARP"), int.arp.unwrap().to_string())
             }
+            Layer4::Igmp => (String::from("IGMP"), String::from("IGMP")),
+            Layer4::IPv6HopByHop => (String::from("IPv6HbH"), String::from("IPv6HbH")),
             Layer4::Unknown(x) => {
                 red_flag = true;
                 reason.push_str("UNKNOWN_LAYER4;");
@@ -179,7 +184,7 @@ pub fn anomaly(matches: &ArgMatches) {
                         };
                         writeln!(
                             term,
-                            "{} | {:.9} | {}{} | {}{} | {} | {} | {}",
+                            "{} | {:.9} | {}{} | {}{} | {} | {} | {} | {}",
                             i,
                             diff_time,
                             src_ip,
@@ -188,13 +193,21 @@ pub fn anomaly(matches: &ArgMatches) {
                             dst_lookup,
                             transport_data.0,
                             len,
-                            transport_data.1
+                            transport_data.1,
+                            reason
                         )
                     } else {
                         writeln!(
                             term,
-                            "{} | {:.9} | {} | {} | {} | {} | {}",
-                            i, diff_time, src_ip, dst_ip, transport_data.0, len, transport_data.1
+                            "{} | {:.9} | {} | {} | {} | {} | {} | {}",
+                            i,
+                            diff_time,
+                            src_ip,
+                            dst_ip,
+                            transport_data.0,
+                            len,
+                            transport_data.1,
+                            reason
                         )
                     }
                 }

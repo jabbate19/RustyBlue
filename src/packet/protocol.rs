@@ -13,7 +13,7 @@ impl fmt::Display for Layer3 {
             Layer3::IPv4 => write!(f, "IPv4"),
             Layer3::IPv6 => write!(f, "IPv6"),
             Layer3::Arp => write!(f, "ARP"),
-            Layer3::Unknown(_) => write!(f, "???"),
+            Layer3::Unknown(x) => write!(f, "Unknown Layer 3! ({})", x),
         }
     }
 }
@@ -35,6 +35,8 @@ pub enum Layer4 {
     Icmp,
     ICMPv6,
     Arp,
+    IPv6HopByHop,
+    Igmp,
     Unknown(u8),
 }
 
@@ -46,7 +48,9 @@ impl fmt::Display for Layer4 {
             Layer4::Icmp => write!(f, "ICMP"),
             Layer4::ICMPv6 => write!(f, "ICMPv6"),
             Layer4::Arp => write!(f, "ARP"),
-            Layer4::Unknown(_) => write!(f, "???"),
+            Layer4::Igmp => write!(f, "IGMP"),
+            Layer4::IPv6HopByHop => write!(f, "IPv6HbH"),
+            Layer4::Unknown(x) => write!(f, "Unknown Layer 3! ({})", x),
         }
     }
 }
@@ -54,6 +58,8 @@ impl fmt::Display for Layer4 {
 impl From<u8> for Layer4 {
     fn from(n: u8) -> Self {
         match n {
+            0x00 => Self::IPv6HopByHop,
+            0x02 => Self::Igmp,
             0x06 => Self::Tcp,
             0x11 => Self::Udp,
             0x01 => Self::Icmp,

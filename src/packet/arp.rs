@@ -1,5 +1,5 @@
 use std::fmt;
-use std::net::{IpAddr};
+use std::net::IpAddr;
 
 pub struct Arp {
     src_ip: IpAddr,

@@ -59,7 +59,10 @@ impl<'a> IP<'a> {
                 arp: None,
                 payload: &data[40..],
             }),
-            _ => None,
+            _ => {
+                println!("{}", protocol);
+                None
+            }
         }
     }
 }
