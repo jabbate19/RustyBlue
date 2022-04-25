@@ -3,6 +3,7 @@ use crate::packet::protocol::*;
 use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
 use std::net::IpAddr;
+use std::process::Command;
 use std::vec::Vec;
 
 use clap::ArgMatches;
@@ -125,15 +126,39 @@ pub fn anomaly(matches: &ArgMatches) {
         let transport_data = match protocol {
             Layer4::Tcp | Layer4::Udp => {
                 let transport = packet::transport::Transport::new(int.payload, protocol).unwrap();
-                if (&host == src_ip
-                    && !new_ports.contains(&transport.src_port)
-                    && transport.src_port < 1024)
-                    || (&host == dst_ip
-                        && !new_ports.contains(&transport.dst_port)
-                        && transport.dst_port < 1024)
-                {
+                let port_of_concern: u16 = if &host == src_ip {
+                    transport.src_port
+                } else {
+                    transport.dst_port
+                };
+                if (!new_ports.contains(&port_of_concern)) {
                     red_flag = true;
-                    reason.push_str("UNAUTHORIZED_PORT;")
+                    reason.push_str("UNAUTHORIZED_PORT");
+                    if cfg!(target_os = "windows") {
+                        reason.push_str(";");
+                    } else {
+                        let process = Command::new("lsof")
+                            .arg("-i")
+                            .arg(&format!(":{}", port_of_concern))
+                            .output()
+                            .unwrap();
+                        let mut pid = std::str::from_utf8(&process.stdout)
+                            .unwrap()
+                            .split_whitespace();
+                        pid.next();
+                        loop{
+                            for i in 0..9 {
+                                match pid.next() {
+                                    Some(_) => {},
+                                    None => break
+                                };
+                            }
+                            match pid.next() {
+                                Some(x) => reason.push_str(&format!(" (PID: {})", x)),
+                                None => break
+                            };
+                        }
+                    }
                 }
                 (transport.get_tag(), transport.to_string())
             }
