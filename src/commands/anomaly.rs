@@ -5,10 +5,12 @@ use pcap::{Capture, Device};
 use std::net::IpAddr;
 use std::process::Command;
 use std::vec::Vec;
+use std::collections::HashSet;
 
 use clap::ArgMatches;
 
 pub fn anomaly(matches: &ArgMatches) {
+    let killswitch: bool = matches.is_present("killswitch");
     // Get Data file with config
     let filename = matches.value_of("config").unwrap();
     let f = std::fs::File::open(filename).unwrap();
@@ -134,31 +136,45 @@ pub fn anomaly(matches: &ArgMatches) {
                 if (!new_ports.contains(&port_of_concern)) {
                     red_flag = true;
                     reason.push_str("UNAUTHORIZED_PORT");
-                    if cfg!(target_os = "windows") {
-                        reason.push_str(";");
-                    } else {
+                    if !cfg!(target_os = "windows") {
                         let process = Command::new("lsof")
                             .arg("-i")
                             .arg(&format!(":{}", port_of_concern))
                             .output()
                             .unwrap();
-                        let mut pid = std::str::from_utf8(&process.stdout)
+                        let mut lsof_out = std::str::from_utf8(&process.stdout)
                             .unwrap()
                             .split_whitespace();
-                        pid.next();
+                        lsof_out.next();
+                        let mut pids = HashSet::new();
                         loop{
                             for i in 0..9 {
-                                match pid.next() {
+                                match lsof_out.next() {
                                     Some(_) => {},
                                     None => break
                                 };
                             }
-                            match pid.next() {
-                                Some(x) => reason.push_str(&format!(" (PID: {})", x)),
+                            match lsof_out.next() {
+                                Some(x) => {
+                                    pids.insert(x)
+                                },
                                 None => break
                             };
                         }
+                        if pids.len() > 0 {
+                            let mut all_pids = String::from(" (PIDS: ");
+                            for pid in pids {
+                                all_pids.push_str(pid);
+                                all_pids.push_str(",");
+                                if killswitch {
+                                    Command::new("kill").arg("-9").arg(pid).output();
+                                }
+                            }
+                            all_pids.push_str(")");
+                            reason.push_str(&all_pids);
+                        }
                     }
+                    reason.push_str(";");
                 }
                 (transport.get_tag(), transport.to_string())
             }

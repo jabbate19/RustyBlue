@@ -76,6 +76,12 @@ fn main() {
                         .takes_value(false)
                         .help("Attaches DNS lookup to IP")
                         .required(false),
+                ).arg(
+                    Arg::new("killswitch")
+                        .short('k')
+                        .takes_value(false)
+                        .help("Automatically kills processes operating on unauthroized ports (BE CAREFUL)")
+                        .required(false),
                 ),
         )
         .get_matches();
