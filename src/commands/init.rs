@@ -2,10 +2,11 @@ use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io;
-use std::io::Write;
 use std::io::{BufRead, BufWriter, Write};
 use std::process::Command;
 use std::str;
+use std::iter::repeat;
+
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
@@ -185,9 +186,9 @@ pub fn init(matches: &ArgMatches) {
     term.reset();
 
     let mut sshd_config = File::open("/etc/ssh/sshd_config").unwrap();
-    let new_file = fs::File::create("/tmp/sshd_config").expect("Failed to create file");
+    let new_file = File::create("/tmp/sshd_config").expect("Failed to create file");
     let mut buffered_out = BufWriter::new(new_file);
-    let buffered = io::BufReader::new(old_file);
+    let buffered = io::BufReader::new(sshd_config);
     let mut permit_root = false;
     let mut use_pam = false;
     let mut permit_empty_pass = false;
@@ -196,23 +197,18 @@ pub fn init(matches: &ArgMatches) {
         .lines()
         .map(|line_res| {
             line_res.and_then(|line| {
-                if line.trim() == "PermitRootLogin yes" {
-                    buffered_out.write_all(
-                        line.replace("PermitRootLogin yes", "PermitRootLogin no")
-                            .as_bytes(),
-                    );
-                    permit_root = true;
-                } else if line.trim() == "UsePAM yes" {
-                    buffered_out.write_all(line.replace("UsePAM yes", "UsePAM no").as_bytes());
-                    use_pam = true;
-                } else if line.trim() == "PermitEmptyPasswords yes" {
-                    buffered_out.write_all(
-                        line.replace("PermitEmptyPasswords yes", "PermitEmptyPasswords no")
-                            .as_bytes(),
-                    );
-                    permit_empty_pass = true;
-                } else {
-                    buffered_out.write_all(line.as_bytes());
+                match line.trim() {
+                    "PermitRootLogin yes" => {
+                        permit_root = true;
+                        buffered_out.write_all(line.replace("PermitRootLogin yes", "PermitRootLogin no").as_bytes())},
+                    "UsePAM yes" => {
+                        use_pam = true;
+                        buffered_out.write_all(line.replace("UsePAM yes", "UsePAM no").as_bytes())},
+                    "PermitEmptyPasswords yes" => {
+                        permit_empty_pass = true;
+                        buffered_out.write_all(line.replace("PermitEmptyPasswords yes", "PermitEmptyPasswords no").as_bytes())},
+                    _ => {
+                        buffered_out.write_all(line.as_bytes())}
                 }
             })
         })
@@ -248,7 +244,7 @@ pub fn init(matches: &ArgMatches) {
     term.reset();
     
     writeln!(term, "FILES TO CHECK NOW");
-    writeln!(term, "=".repeat(20));
+    writeln!(term, "{}", "=".repeat(20));
     writeln!(term, "/etc/sudoers (visudo)");
     writeln!(term, "~/.bashrc, ~/.bash_profile, /etc/profile, /etc/bash.bashrc");
     writeln!(term, "/etc/environment");
