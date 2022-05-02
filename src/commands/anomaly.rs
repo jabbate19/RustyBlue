@@ -14,9 +14,9 @@ pub fn anomaly(matches: &ArgMatches) {
     // Get Data file with config
     let filename = matches.value_of("config").unwrap();
     let f = std::fs::File::open(filename).unwrap();
-    let data: serde_yaml::Value = serde_yaml::from_reader(f).unwrap();
+    let data: serde_yaml::Value = serde_json::from_reader(f).unwrap();
 
-    let host: IpAddr = IpAddr::V4(data["host"].as_str().unwrap().parse().unwrap());
+    let host: IpAddr = IpAddr::V4(data["ip"].as_str().unwrap().parse().unwrap());
 
     // Read Allowed Ports
     let mut new_ports = Vec::new();
@@ -26,32 +26,8 @@ pub fn anomaly(matches: &ArgMatches) {
         new_ports.push(p);
     }
 
-    // Read safe network IDs and CIDR
-    let mut safe_ids = Vec::new();
-    let safe = data["safe"].as_sequence().unwrap();
-    for s in safe {
-        let cidr = s["cidr"].as_u64().unwrap() as u16;
-        safe_ids.push((
-            packet::ip::ip_network_id(s["ip"].as_str().unwrap().parse().unwrap(), &cidr).unwrap(),
-            cidr,
-        ));
-    }
-
-    // Known Red Flags
-    let mut flag_ids = Vec::new();
-    let flag = data["flags"].as_sequence().unwrap();
-    for f in flag {
-        let cidr = f["cidr"].as_u64().unwrap() as u16;
-        flag_ids.push((
-            packet::ip::ip_network_id(f["ip"].as_str().unwrap().parse().unwrap(), &cidr).unwrap(),
-            cidr,
-        ));
-    }
-
     println!("Host IP: {}", host);
     println!("Good Ports: {:?}", new_ports);
-    println!("Safe Networks: {:?}", safe_ids);
-    println!("Unsafe Networks: {:?}", flag_ids);
 
     let format: bool = !matches.is_present("no-format");
 
@@ -114,16 +90,6 @@ pub fn anomaly(matches: &ArgMatches) {
         };
         let dst_ip = &int.dst;
         let src_ip = &int.src;
-        if dst_ip.is_ipv4() {
-            for (net_id, cidr) in &flag_ids {
-                if net_id == &packet::ip::ip_network_id(*src_ip, cidr).unwrap()
-                    || net_id == &packet::ip::ip_network_id(*dst_ip, cidr).unwrap()
-                {
-                    red_flag = true;
-                    reason.push_str("FLAGGED_IP;")
-                }
-            }
-        }
         let protocol = &int.protocol;
         let transport_data = match protocol {
             Layer4::Tcp | Layer4::Udp => {
@@ -197,13 +163,6 @@ pub fn anomaly(matches: &ArgMatches) {
                 (String::from("???"), format!("??? (Header ID: {})", x))
             }
         };
-        for (net_id, cidr) in &safe_ids {
-            if (&host == src_ip && net_id == &packet::ip::ip_network_id(*dst_ip, cidr).unwrap())
-                || (&host == dst_ip && net_id == &packet::ip::ip_network_id(*src_ip, cidr).unwrap())
-            {
-                red_flag = false;
-            }
-        }
         if red_flag {
             match protocol {
                 Layer4::Arp => writeln!(

@@ -7,6 +7,10 @@ fn main() {
     let matches = Command::new("RustyBlue")
         .about("Rust-Based CLI Blue Team Tool")
         .subcommand(
+            Command::new("init")
+                .about("initialize 5 minute plan and template file")
+        )
+        .subcommand(
             Command::new("sniff")
                 .about("sniff traffic with given filters")
                 .arg(
@@ -93,7 +97,9 @@ fn process_command(matches: ArgMatches) {
         commands::sniff::sniff(matches)
     } else if let Some(matches) = matches.subcommand_matches("anomaly") {
         commands::anomaly::anomaly(matches)
-    } else {
+    } else if let Some(matches) = matches.subcommand_matches("init") {
+        commands::init::init(matches)
+    }else {
         println!("Please Provide a Command!");
     }
 }
