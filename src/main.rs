@@ -99,7 +99,7 @@ fn process_command(matches: ArgMatches) {
         commands::anomaly::anomaly(matches)
     } else if let Some(matches) = matches.subcommand_matches("init") {
         commands::init::init(matches)
-    }else {
+    } else {
         println!("Please Provide a Command!");
     }
 }

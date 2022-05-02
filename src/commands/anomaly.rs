@@ -2,10 +2,10 @@ use crate::packet;
 use crate::packet::protocol::*;
 use dns_lookup::lookup_addr;
 use pcap::{Capture, Device};
+use std::collections::HashSet;
 use std::net::IpAddr;
 use std::process::Command;
 use std::vec::Vec;
-use std::collections::HashSet;
 
 use clap::ArgMatches;
 
@@ -113,18 +113,16 @@ pub fn anomaly(matches: &ArgMatches) {
                             .split_whitespace();
                         lsof_out.next();
                         let mut pids = HashSet::new();
-                        loop{
+                        loop {
                             for i in 0..9 {
                                 match lsof_out.next() {
-                                    Some(_) => {},
-                                    None => break
+                                    Some(_) => {}
+                                    None => break,
                                 };
                             }
                             match lsof_out.next() {
-                                Some(x) => {
-                                    pids.insert(x)
-                                },
-                                None => break
+                                Some(x) => pids.insert(x),
+                                None => break,
                             };
                         }
                         if pids.len() > 0 {
